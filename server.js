@@ -5,20 +5,21 @@ var async = require('async');
 var randomstring = require("randomstring");
 var QRS = require('qrs');
 var path = require('path');
-//var express = require("express");
-//var app     = express();
 var app = require('express')();
 var http = require('http').Server(app);
 var io = require('socket.io')(http);
-
 var bodyParser = require('body-parser');
-var timeout = require('connect-timeout'); //express v4
-var port = 8080;
-var host = 'kn2-sns-p0001.systems.private';
-var hostShort = 'kn2-sns-p0001';
-var certPath = 'C:\\Users\\adm-s7729841\\Desktop\\webfiles\\kn2-sns-p0001\\';
-var userDirectory = 'SYSTEMS';
-var userId = 'adm-s7729841';
+var timeout = require('connect-timeout');
+var config = require('./config/config');
+
+var port = config.main.port;
+var host = config.qs.host;
+var hostShort = config.qs.hostShort;
+var certPath = config.qs.certpath;
+var userDirectory = config.qs.userDirectory;
+var userId = config.qs.user;
+var streamId = config.qs.streamId;
+var globalLog= config.qs.certpath;
 
 //app.use(app.static('public'));
 app.use(bodyParser.urlencoded({ extended: false }));
@@ -46,12 +47,12 @@ var config = {
 
 var qrs = new QRS( config );
 
-app.get('/',function(req,res){
-  res.sendfile(__dirname+'/public/index1.html');
-});
+// app.get('/',function(req,res){
+//   res.sendfile(__dirname+'/public/index1.html');
+// });
 
 function WriteLog(logMsg) {
-	fs.appendFile("C:\\Users\\adm-s7729841\\Desktop\\webfiles\\OnDemand.log", JSON.stringify(logMsg) + '\r\n', function(err) {
+	fs.appendFile(globalLog, JSON.stringify(logMsg) + '\r\n', function(err) {
 		if(err) {
 			return console.log(err);
 		}
@@ -63,31 +64,16 @@ io.on('connection', function(socket) {
 	console.log('client connected: ' + socket.id)
 
   socket.on('start', function(msg){
-	  var sessionId = randomstring.generate(10);
-    //console.log('message: ' + msg);
-	//io.to(clientId).emit('chat message', 'started!');
-
-
-
-
-// POST /login gets urlencoded bodies
-//app.post('/test', function (req, resp) {
-	//console.log(req.body)
-	//var data = req.body;
+  var sessionId = randomstring.generate(10);
 	var data = JSON.parse(msg)
 	var strategy = data.strategy;
 	var secondaryStrategy = data.secondaryStrategy;
-	//console.log(strategy);
-	//console.log(secondaryStrategy);
 	var description = '';
-
 
 	var field = strategy[0].field;
 	var values = strategy[0].values;
 	values = values.replace(/, /g, '\n');
 	description = description + 'field: ' + field + '; values: ' + values + '\n';
-	//console.log(field)
-	//console.log(values)
 
 	var whereClause = '';
 	var counter = 0;
@@ -130,11 +116,6 @@ io.on('connection', function(socket) {
 	var todayDate = yy+'-'+mm+'-'+dd + ' ' + currentHours + ':' + currentMins + ':' + currentSec + '.' + currentMiliSec;
 
 	description = description + 'Created at:' + todayDate;
-	//console.log(description)
-//	res.send('done')
-//})
-//app.get('/generate/:channel',function(req,resp){
-//  var channel = req.params.channel;
 
 var r = request.defaults({
   rejectUnauthorized: false,
@@ -163,7 +144,6 @@ function(err, res, body) {
 
 
   var ticket = JSON.parse(body)['Ticket'];
-  //console.log(ticket)
   r.get('https://'+ host +'/hub/?qlikTicket=' + ticket, function(error, response, body) {
     var cookies = response.headers['set-cookie'];
     var config = {
@@ -182,12 +162,12 @@ function(err, res, body) {
 	var newDocId;
 	var newDocName;
 
-    var templateAppName = 'TiVo_Top_Programmes_Template';
-    var scriptMarkerField = '§field§';
+  var templateAppName = 'TiVo_Top_Programmes_Template';
+  var scriptMarkerField = '§field§';
 	var scriptMarkerValues = '§values§';
 	var scriptSecondaryReduction = '§SecondaryReduction§'
     //var scriptReplace = channel; //req.query.q;
-    var streamId = 'd3b3ebd4-4726-4bb9-9732-016da5624f4e';
+
 
     qsocks.Connect(config).then(function(global) {
 		global.getDocList().then(function(reply) {
@@ -207,10 +187,6 @@ function(err, res, body) {
   }).then(function(docId) {
         console.log(clientId + ' --> ' + 'old app: ' + docId);
 		WriteLog( {sessionId: sessionId, clientId: clientId, operation: 'old app', value: docId, date: new Date() } );
-		//io.to(clientId).emit('chat message', 'old app: ' + docId);
-
-
-
 		newDocName = templateAppName.replace('(1)','') + '_' + randomstring.generate(7);
 	return  qrs.post( 'qrs/app/' + docId + '/copy',[{"key" :"name", "value": newDocName}])
 
@@ -264,19 +240,14 @@ function(err, res, body) {
 			console.log(err)
 		});
     }).then(function(doc) {
-		//console.log('https://'+ host +'/sense/app/' + newDocId)
-		//console.log('all done!');
-		//io.to(clientId).emit('chat message', 'all done!');
-		console.log(clientId + ' --> ' + 'https://'+ hostShort +'/sense/app/' + newDocId);
-		io.to(clientId).emit('chat message', '<a target="_blank"  href="https://'+ hostShort +'/sense/app/' + newDocId + '">Open app</a>');
-		WriteLog( {sessionId: sessionId, clientId: clientId, operation: 'generated', value: "https://'+ hostShort +'/sense/app/' + newDocId + '", date: new Date() } );
-		global.connection.ws.close()
-		//resp.send('https://'+ hostShort +'/sense/app/' + newDocId);
+		    console.log(clientId + ' --> ' + 'https://'+ hostShort +'/sense/app/' + newDocId);
+		      io.to(clientId).emit('chat message', '<a target="_blank"  href="https://'+ hostShort +'/sense/app/' + newDocId + '">Open app</a>');
+		        WriteLog( {sessionId: sessionId, clientId: clientId, operation: 'generated', value: "https://'+ hostShort +'/sense/app/' + newDocId + '", date: new Date() } );
+		          global.connection.ws.close()
 	})
 })
 })
 })
-//})
   });
 });
 

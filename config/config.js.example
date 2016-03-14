@@ -1,0 +1,17 @@
+var config = {};
+
+config.main = {};
+config.qs = {};
+
+config.main.port = 8080;
+config.main.logpath = 'C:\\OnDemand.log';
+
+config.qs.host = 'instance-2';
+config.qs.hostShort = 'instance-2';
+config.qs.origin = 'instance-2';
+config.qs.userDirectory = 'internal';
+config.qs.user = 'sa_repository';
+config.qs.certpath = 'C:\\CertStore\\localhost\\';
+config.qs.streamId = 'd3b3ebd4-4726-4bb9-9732-016da5624f4e';
+
+module.exports = config;
